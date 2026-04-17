@@ -7,6 +7,7 @@ Fuente: INDEC — Intercambio Comercial Argentino (ICA)
 
 import sqlite3
 import io
+import shutil
 import logging
 from pathlib import Path
 
@@ -21,7 +22,26 @@ log = logging.getLogger(__name__)
 # ── Paths ──────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
+STATIC_DIR = BASE_DIR / "static"
+
 DATA_DIR.mkdir(exist_ok=True)
+
+# ── CORRECCIÓN: Crear carpeta static/ y copiar index.html si no existe ─────
+# El index.html puede estar en la raíz del repo (fuera de static/).
+# Este bloque garantiza que static/index.html siempre esté disponible.
+STATIC_DIR.mkdir(exist_ok=True)
+_html_candidates = [
+    BASE_DIR / "index.html",          # raíz del repo
+    BASE_DIR / "static" / "index.html",  # ubicación canónica
+]
+if not (STATIC_DIR / "index.html").exists():
+    for _candidate in _html_candidates:
+        if _candidate.exists() and _candidate != STATIC_DIR / "index.html":
+            shutil.copy(_candidate, STATIC_DIR / "index.html")
+            log.info(f"index.html copiado desde {_candidate} → {STATIC_DIR / 'index.html'}")
+            break
+    else:
+        log.warning("index.html no encontrado. El frontend no estará disponible.")
 
 DB1_PATH = DATA_DIR / "saldo_comercial1.db"
 DB2_PATH = DATA_DIR / "saldo_comercial2.db"
@@ -276,6 +296,9 @@ def debug():
         "version": "1.0.0",
         "base_dir": str(BASE_DIR),
         "data_dir": str(DATA_DIR),
+        "static_dir": str(STATIC_DIR),
+        "static_exists": STATIC_DIR.exists(),
+        "index_html_exists": (STATIC_DIR / "index.html").exists(),
         "archivos_data": archivos,
         "fuentes_catalogo": len(FUENTES_CATALOG),
         **{f"db{i}_exists": DB_PATHS[i].exists() for i in (1, 2)},
@@ -463,11 +486,20 @@ def export_csv(
 
 
 # ── Frontend ───────────────────────────────────────────────────────────────
-app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+# CORRECCIÓN: Montamos StaticFiles sólo si el directorio existe, para evitar
+# RuntimeError en import-time que tumba todo el proceso antes de abrir el puerto.
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+else:
+    log.warning("Carpeta static/ no encontrada — los assets estáticos no estarán disponibles.")
 
 
 @app.get("/", response_class=HTMLResponse)
 def root():
-    return HTMLResponse(
-        (BASE_DIR / "static" / "index.html").read_text(encoding="utf-8")
-    )
+    index_path = STATIC_DIR / "index.html"
+    if not index_path.exists():
+        return HTMLResponse(
+            "<h2>Frontend no disponible. Asegurate de que static/index.html exista.</h2>",
+            status_code=503,
+        )
+    return HTMLResponse(index_path.read_text(encoding="utf-8"))
