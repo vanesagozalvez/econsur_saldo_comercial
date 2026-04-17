@@ -2,7 +2,12 @@ services:
   - type: web
     name: econsur-saldo-comercial
     runtime: python
-    buildCommand: pip install -r requirements.txt
+    # CORRECCIÓN: El buildCommand crea la carpeta static/ y copia index.html
+    # desde la raíz del repo, que es donde está en el repositorio.
+    buildCommand: |
+      pip install -r requirements.txt &&
+      mkdir -p static &&
+      cp index.html static/index.html
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
