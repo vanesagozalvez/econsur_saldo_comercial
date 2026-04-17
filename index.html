@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Saldo Comercial · Argentina</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #f2f4f7;
+    --surface:   #ffffff;
+    --border:    #d4d8e0;
+    --accent:    #0e7065;
+    --accent-dk: #0a5249;
+    --accent-lt: #f0faf8;
+    --text:      #111827;
+    --muted:     #6b7280;
+    --danger:    #b91c1c;
+    --ok:        #065f46;
+    --ok-lt:     #ecfdf5;
+    --warn-lt:   #fffbeb;
+    --row-alt:   #f9fafb;
+    --shadow:    0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+    --db1-bg:    #f0faf8; --db1-c: #0e7065;
+    --db2-bg:    #fef3c7; --db2-c: #92400e;
+  }
+
+  body {
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── Header ─────────────────────────────────────────── */
+  header {
+    background: var(--accent);
+    color: #fff;
+    padding: 0 24px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  }
+  .hdr-logo { font-size: 26px; line-height: 1; }
+  .hdr-titles { display: flex; flex-direction: column; gap: 1px; }
+  header h1 { font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+  .header-sub { font-size: 11px; opacity: .75; }
+  .header-stats {
+    margin-left: auto;
+    font-size: 11px;
+    opacity: .7;
+    white-space: nowrap;
+    text-align: right;
+  }
+  .hdr-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 3px; }
+  .hdr-dot.ok  { background: #4ade80; }
+  .hdr-dot.err { background: #f87171; }
+
+  /* ── Layout ─────────────────────────────────────────── */
+  .main { max-width: 1200px; margin: 0 auto; padding: 20px 16px; }
+
+  /* ── Card ───────────────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 18px 22px;
+    margin-bottom: 14px;
+  }
+  .card-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--muted);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .card-title::before {
+    content: '';
+    display: block;
+    width: 3px;
+    height: 13px;
+    background: var(--accent);
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* ── Steps ───────────────────────────────────────────── */
+  .steps { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .step { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+  .step-num {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--border);
+    color: var(--muted);
+    font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: background .2s, color .2s;
+  }
+  .step.active .step-num  { background: var(--accent); color: #fff; }
+  .step.done .step-num    { background: var(--ok); color: #fff; }
+  .step-arrow { color: var(--border); font-size: 12px; }
+
+  /* ── Form ────────────────────────────────────────────── */
+  .row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--muted);
+  }
+
+  select, input[type="date"] {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 11px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    background: #fff;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+    min-height: 36px;
+  }
+  select:focus, input[type="date"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(14,112,101,.15);
+  }
+  select:disabled, input:disabled {
+    background: var(--bg);
+    color: var(--muted);
+    cursor: not-allowed;
+    opacity: .65;
+  }
+
+  /* ── Buttons ─────────────────────────────────────────── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px; font-weight: 600; font-family: inherit;
+    border: none; cursor: pointer;
+    transition: background .15s, opacity .15s, transform .1s;
+    white-space: nowrap;
+    min-height: 36px;
+  }
+  .btn:not(:disabled):active { transform: scale(.98); }
+  .btn:disabled { opacity: .35; cursor: not-allowed; }
+  .btn-primary  { background: var(--accent); color: #fff; }
+  .btn-primary:not(:disabled):hover  { background: var(--accent-dk); }
+  .btn-success  { background: #059669; color: #fff; }
+  .btn-success:not(:disabled):hover  { background: #047857; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+  .btn-ghost:not(:disabled):hover { background: var(--bg); color: var(--text); }
+
+  /* ── Badge ───────────────────────────────────────────── */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    vertical-align: middle;
+  }
+  .badge-1 { background: var(--db1-bg); color: var(--db1-c); }
+  .badge-2 { background: var(--db2-bg); color: var(--db2-c); }
+
+  /* ── Cuadro badge ────────────────────────────────────── */
+  .cuadro-tag {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+
+  /* ── Descripción fuente ──────────────────────────────── */
+  #fuente-desc {
+    display: none;
+    padding: 10px 14px;
+    background: var(--accent-lt);
+    border: 1px solid #a7f3d0;
+    border-radius: 7px;
+    font-size: 12px;
+    color: #0a5249;
+    margin-top: 12px;
+    line-height: 1.5;
+  }
+
+  /* ── Status ──────────────────────────────────────────── */
+  #status {
+    padding: 11px 15px;
+    border-radius: 7px;
+    font-size: 13px;
+    margin-bottom: 14px;
+    display: none;
+    line-height: 1.4;
+  }
+  #status.info    { background: #f0fdf4; color: #065f46; border: 1px solid #a7f3d0; display: block; }
+  #status.error   { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; display: block; }
+  #status.success { background: var(--ok-lt); color: var(--ok); border: 1px solid #a7f3d0; display: block; }
+  #status.warn    { background: var(--warn-lt); color: #92400e; border: 1px solid #fde68a; display: block; }
+
+  /* ── Meta strip ──────────────────────────────────────── */
+  #meta-strip {
+    display: none;
+    flex-wrap: wrap;
+    gap: 24px;
+    padding: 13px 18px;
+    background: #f8fffe;
+    border: 1px solid #c0e9e4;
+    border-radius: 9px;
+    margin-bottom: 14px;
+  }
+  .mi strong {
+    display: block;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #4b9e96;
+    margin-bottom: 2px;
+  }
+  .mi span { font-size: 13px; }
+
+  /* ── Chart ───────────────────────────────────────────── */
+  #chart-wrap { display: none; margin-bottom: 14px; }
+  #chart-wrap .card { padding: 16px; }
+  #chart-canvas { max-height: 320px; }
+
+  /* ── Table ───────────────────────────────────────────── */
+  .tbl-toolbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .tbl-toolbar .count { font-size: 11px; color: var(--muted); margin-left: auto; }
+
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 9px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead { background: #f0f9f8; position: sticky; top: 0; z-index: 1; }
+  th {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .07em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td { padding: 8px 14px; border-bottom: 1px solid #f0f0f0; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: var(--row-alt); }
+  tr:hover td { background: #f0faf8 !important; }
+  .num {
+    text-align: right;
+    font-family: 'Courier New', monospace;
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .pos { color: var(--ok); font-weight: 600; }
+  .neg { color: var(--danger); font-weight: 600; }
+  .neutral { color: var(--muted); }
+
+  /* ── Spinner ─────────────────────────────────────────── */
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Responsive ──────────────────────────────────────── */
+  @media (max-width: 640px) {
+    .row { flex-direction: column; }
+    select, input[type="date"] { width: 100%; }
+    header { height: auto; padding: 12px 16px; flex-wrap: wrap; }
+    .header-stats { margin-left: 0; width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-logo">🌐</div>
+  <div class="hdr-titles">
+    <h1>Saldo Comercial · Argentina</h1>
+    <span class="header-sub">INDEC — Intercambio Comercial Argentino · Balance de Pagos · Balance Cambiario</span>
+  </div>
+  <div class="header-stats" id="hdr-stats">Conectando...</div>
+</header>
+
+<div class="main">
+
+  <!-- SELECCIÓN -->
+  <div class="card">
+    <div class="card-title">Selección de serie</div>
+
+    <div class="steps" id="steps-bar">
+      <div class="step active" id="step-1"><div class="step-num">1</div><span>Cuadro / Fuente</span></div>
+      <div class="step-arrow">›</div>
+      <div class="step" id="step-2"><div class="step-num">2</div><span>Frecuencia</span></div>
+      <div class="step-arrow">›</div>
+      <div class="step" id="step-3"><div class="step-num">3</div><span>Serie</span></div>
+      <div class="step-arrow">›</div>
+      <div class="step" id="step-4"><div class="step-num">4</div><span>Período</span></div>
+    </div>
+
+    <div class="row">
+
+      <div class="field" style="flex:3; min-width:300px;">
+        <label for="sel-fuente">1 · Cuadro / Fuente</label>
+        <select id="sel-fuente">
+          <option value="">— Cargando fuentes... —</option>
+        </select>
+      </div>
+
+      <div class="field" style="min-width:160px;">
+        <label for="sel-freq">2 · Frecuencia</label>
+        <select id="sel-freq" disabled>
+          <option value="">—</option>
+        </select>
+      </div>
+
+      <div class="field" style="flex:4; min-width:300px;">
+        <label for="sel-serie">3 · Serie</label>
+        <select id="sel-serie" disabled>
+          <option value="">—</option>
+        </select>
+      </div>
+
+    </div>
+
+    <div id="fuente-desc"></div>
+
+  </div>
+
+  <!-- PERÍODO -->
+  <div class="card">
+    <div class="card-title">Período de consulta</div>
+    <div class="row">
+
+      <div class="field">
+        <label for="d-desde">Desde</label>
+        <input type="date" id="d-desde" disabled>
+      </div>
+
+      <div class="field">
+        <label for="d-hasta">Hasta</label>
+        <input type="date" id="d-hasta" disabled>
+      </div>
+
+      <button class="btn btn-primary" id="btn-consultar" disabled>
+        🔍 Consultar
+      </button>
+
+    </div>
+  </div>
+
+  <!-- STATUS -->
+  <div id="status"></div>
+
+  <!-- META -->
+  <div id="meta-strip">
+    <div class="mi"><strong>Serie</strong><span id="m-nom">—</span></div>
+    <div class="mi"><strong>Cuadro</strong><span id="m-cuadro">—</span></div>
+    <div class="mi"><strong>Frecuencia</strong><span id="m-freq">—</span></div>
+    <div class="mi"><strong>Dataset</strong><span id="m-db">—</span></div>
+    <div class="mi"><strong>Registros</strong><span id="m-n">—</span></div>
+  </div>
+
+  <!-- RESULTADOS -->
+  <div id="results" style="display:none;">
+
+    <!-- Gráfico -->
+    <div id="chart-wrap">
+      <div class="card">
+        <canvas id="chart-canvas"></canvas>
+      </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="tbl-toolbar">
+      <button class="btn btn-ghost" id="btn-chart">📈 Ver gráfico</button>
+      <button class="btn btn-ghost" id="btn-csv">⬇ Descargar CSV</button>
+      <span class="count" id="count-lbl"></span>
+    </div>
+
+    <!-- Tabla -->
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Período</th>
+            <th>Período Original</th>
+            <th style="text-align:right;">Valor</th>
+            <th style="text-align:right;">Var. %</th>
+          </tr>
+        </thead>
+        <tbody id="tbl-body"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+</div><!-- /main -->
+
+<script>
+'use strict';
+
+// ── DOM ─────────────────────────────────────────────────────────────────────
+const g   = id => document.getElementById(id);
+const sf  = g('sel-fuente');
+const sfq = g('sel-freq');
+const ss  = g('sel-serie');
+const d1  = g('d-desde');
+const d2  = g('d-hasta');
+const bOk    = g('btn-consultar');
+const bChart = g('btn-chart');
+const bCsv   = g('btn-csv');
+
+// ── State ────────────────────────────────────────────────────────────────────
+const S = {
+  fuente: '', frecuencia: '', serie: '', dbNum: null,
+  result: null, chart: null, chartOn: false,
+  descMap: {}, cuadroMap: {}, nombreMap: {},
+};
+
+// ── Colores por dataset ──────────────────────────────────────────────────────
+const DB_COLORS = {
+  1: { line: '#0e7065', fill: 'rgba(14,112,101,.08)', badge: 'badge-1', label: 'ICA — Comercio de Bienes' },
+  2: { line: '#b45309', fill: 'rgba(180,83,9,.08)',   badge: 'badge-2', label: 'Balance de Pagos / Cambiario' },
+};
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function st(msg, type = '') {
+  const el = g('status');
+  el.textContent = msg;
+  el.className   = type;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+function setStep(active) {
+  for (let i = 1; i <= 4; i++) {
+    const el = g(`step-${i}`);
+    el.classList.remove('active', 'done');
+    if (i < active)  el.classList.add('done');
+    if (i === active) el.classList.add('active');
+  }
+}
+
+function reset(from) {
+  if (from <= 1) { sfq.innerHTML = '<option value="">—</option>'; sfq.disabled = true; }
+  if (from <= 2) { ss.innerHTML  = '<option value="">—</option>'; ss.disabled  = true; }
+  if (from <= 3) { d1.value = d2.value = ''; d1.disabled = d2.disabled = true; }
+  bOk.disabled = true;
+  g('results').style.display   = 'none';
+  g('meta-strip').style.display = 'none';
+  g('chart-wrap').style.display = 'none';
+  S.chartOn = false;
+  bChart.textContent = '📈 Ver gráfico';
+  st('', '');
+}
+
+function fmt(v, dec = 2) {
+  if (v == null) return '—';
+  return new Intl.NumberFormat('es-AR', {
+    minimumFractionDigits: dec,
+    maximumFractionDigits: Math.max(dec, 4),
+  }).format(v);
+}
+
+async function api(url) {
+  const r = await fetch(url);
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    throw new Error(e.detail || `Error HTTP ${r.status}`);
+  }
+  return r.json();
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const [fuentes, health] = await Promise.all([
+      api('/api/fuentes'),
+      api('/api/health'),
+    ]);
+
+    // Header dots
+    const dots = [1, 2].map(i =>
+      `<span class="hdr-dot ${health[`db${i}_ok`] ? 'ok' : 'err'}"></span>DB${i}`
+    ).join(' · ');
+    g('hdr-stats').innerHTML = dots;
+
+    // Build lookup maps
+    fuentes.forEach(f => {
+      S.descMap[f.fuente]   = f.descripcion;
+      S.cuadroMap[f.fuente] = f.cuadro;
+      S.nombreMap[f.fuente] = f.fuente_nombre;
+    });
+
+    // Populate select — group by db_num
+    sf.innerHTML = '<option value="">— Seleccionar cuadro / fuente —</option>';
+    const groups = { 1: [], 2: [] };
+    fuentes.forEach(f => groups[f.db_num]?.push(f));
+
+    const groupLabels = {
+      1: '── ICA · Comercio de Bienes (Cuadros 1–9)',
+      2: '── Balance de Pagos, Precios, Servicios (Cuadros 10–36)',
+    };
+
+    [1, 2].forEach(db => {
+      if (!groups[db].length) return;
+      const sep = document.createElement('option');
+      sep.disabled = true;
+      sep.textContent = groupLabels[db];
+      sf.appendChild(sep);
+      groups[db].forEach(f => {
+        const o = document.createElement('option');
+        o.value = f.fuente;
+        o.dataset.db = f.db_num;
+        o.textContent = `${f.cuadro} · ${f.fuente_nombre}`;
+        sf.appendChild(o);
+      });
+    });
+
+    setStep(1);
+  } catch (e) {
+    st('⚠ Error al iniciar la aplicación: ' + e.message, 'error');
+  }
+}
+
+// ── Paso 1 → frecuencias ─────────────────────────────────────────────────────
+sf.addEventListener('change', async () => {
+  reset(1);
+  g('fuente-desc').style.display = 'none';
+  const fuente = sf.value;
+  if (!fuente) return;
+  S.fuente = fuente;
+  S.dbNum  = Number(sf.selectedOptions[0].dataset.db);
+
+  const desc = S.descMap[fuente];
+  if (desc) {
+    g('fuente-desc').innerHTML =
+      `<span class="cuadro-tag">${S.cuadroMap[fuente] || ''}</span>📋 ${desc}`;
+    g('fuente-desc').style.display = 'block';
+  }
+
+  st('Cargando frecuencias...', 'info');
+  try {
+    const freqs = await api(`/api/frecuencias?fuente=${encodeURIComponent(fuente)}`);
+    sfq.innerHTML = '<option value="">— Seleccionar —</option>';
+    freqs.forEach(f => {
+      const o = document.createElement('option');
+      o.value = f;
+      o.textContent = f;
+      sfq.appendChild(o);
+    });
+    sfq.disabled = false;
+    st('', '');
+    setStep(2);
+  } catch (e) { st(e.message, 'error'); }
+});
+
+// ── Paso 2 → series ──────────────────────────────────────────────────────────
+sfq.addEventListener('change', async () => {
+  reset(2);
+  const freq = sfq.value;
+  if (!freq) return;
+  S.frecuencia = freq;
+
+  st('Cargando series...', 'info');
+  try {
+    const series = await api(
+      `/api/series?fuente=${encodeURIComponent(S.fuente)}&frecuencia=${encodeURIComponent(freq)}`
+    );
+    ss.innerHTML = '<option value="">— Seleccionar serie —</option>';
+    series.forEach(s => {
+      const o = document.createElement('option');
+      o.value = s.serie_nombre;
+      o.textContent = s.serie_nombre;
+      ss.appendChild(o);
+    });
+    ss.disabled = false;
+    st(`${series.length} serie(s) disponibles.`, 'success');
+    setStep(3);
+  } catch (e) { st(e.message, 'error'); }
+});
+
+// ── Paso 3 → períodos ────────────────────────────────────────────────────────
+ss.addEventListener('change', async () => {
+  reset(3);
+  const serie = ss.value;
+  if (!serie) return;
+  S.serie = serie;
+
+  st('Cargando rango de períodos...', 'info');
+  try {
+    const r = await api(
+      `/api/periodos?fuente=${encodeURIComponent(S.fuente)}` +
+      `&frecuencia=${encodeURIComponent(S.frecuencia)}` +
+      `&serie=${encodeURIComponent(serie)}`
+    );
+    if (!r.desde) { st('No se encontraron datos para esta serie.', 'error'); return; }
+    d1.value = d1.min = d2.min = r.desde;
+    d2.value = d1.max = d2.max = r.hasta;
+    d1.disabled = d2.disabled = false;
+    bOk.disabled = false;
+    st(`✓ Rango disponible: ${r.desde} → ${r.hasta}`, 'success');
+    setStep(4);
+  } catch (e) { st(e.message, 'error'); }
+});
+
+// ── Consultar ─────────────────────────────────────────────────────────────────
+bOk.addEventListener('click', async () => {
+  const desde = d1.value, hasta = d2.value;
+  if (!desde || !hasta) { st('Ingresá fechas válidas.', 'error'); return; }
+  if (desde > hasta)    { st('"Desde" debe ser anterior a "Hasta".', 'error'); return; }
+
+  st('Consultando...', 'info');
+  bOk.disabled = true;
+  bOk.innerHTML = '<span class="spinner"></span> Consultando...';
+
+  try {
+    const url =
+      `api/datos?fuente=${encodeURIComponent(S.fuente)}` +
+      `&frecuencia=${encodeURIComponent(S.frecuencia)}` +
+      `&serie=${encodeURIComponent(S.serie)}` +
+      `&desde=${desde}&hasta=${hasta}`;
+    S.result = await api(url);
+    renderResult(S.result);
+    st('', '');
+  } catch (e) {
+    st('Error en la consulta: ' + e.message, 'error');
+  } finally {
+    bOk.disabled = false;
+    bOk.innerHTML = '🔍 Consultar';
+  }
+});
+
+// ── Render tabla ──────────────────────────────────────────────────────────────
+function renderResult({ datos, meta }) {
+  if (!datos?.length) { st('Sin datos para el período seleccionado.', 'warn'); return; }
+
+  const col = DB_COLORS[meta.db_num] || DB_COLORS[1];
+
+  // Meta strip
+  g('m-nom').textContent  = meta.serie_nombre || '—';
+  g('m-cuadro').innerHTML =
+    `<span class="cuadro-tag">${meta.cuadro || ''}</span>${meta.nombre_cuadro || '—'}`;
+  g('m-freq').textContent = meta.frecuencia || '—';
+  g('m-db').innerHTML     = `<span class="badge ${col.badge}">${col.label}</span>`;
+  g('m-n').textContent    = meta.total_registros;
+  g('meta-strip').style.display = 'flex';
+
+  // Tabla
+  const tbody = g('tbl-body');
+  tbody.innerHTML = '';
+  datos.forEach((row, i) => {
+    const prev   = i > 0 ? datos[i - 1].valor : null;
+    const pct    = (prev != null && prev !== 0 && row.valor != null)
+                   ? ((row.valor - prev) / Math.abs(prev)) * 100 : null;
+    const cls    = pct == null ? 'neutral' : pct > 0 ? 'pos' : pct < 0 ? 'neg' : 'neutral';
+    const pctStr = pct == null ? '—' : (pct > 0 ? '+' : '') + fmt(pct, 2) + ' %';
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      `<td>${row.periodo || '—'}</td>` +
+      `<td style="color:var(--muted);font-size:12px;">${row.periodo_raw || '—'}</td>` +
+      `<td class="num">${fmt(row.valor)}</td>` +
+      `<td class="num ${cls}">${pctStr}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  g('count-lbl').textContent = `${datos.length} observaciones`;
+  S.chartOn = false;
+  g('chart-wrap').style.display = 'none';
+  bChart.textContent = '📈 Ver gráfico';
+  g('results').style.display = 'block';
+}
+
+// ── Gráfico ───────────────────────────────────────────────────────────────────
+bChart.addEventListener('click', () => {
+  if (!S.result) return;
+  S.chartOn = !S.chartOn;
+  g('chart-wrap').style.display = S.chartOn ? 'block' : 'none';
+  bChart.textContent = S.chartOn ? '📋 Ocultar gráfico' : '📈 Ver gráfico';
+  if (S.chartOn) buildChart(S.result);
+});
+
+function buildChart({ datos, meta }) {
+  if (S.chart) { S.chart.destroy(); S.chart = null; }
+  const ctx = g('chart-canvas').getContext('2d');
+  const col = DB_COLORS[meta.db_num] || DB_COLORS[1];
+
+  // Color por valor (verde positivo / rojo negativo)
+  const hasNeg = datos.some(d => d.valor < 0);
+  const pointColors = datos.map(d =>
+    d.valor >= 0 ? 'rgba(14,112,101,.7)' : 'rgba(185,28,28,.7)'
+  );
+
+  S.chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels:   datos.map(d => d.periodo || d.periodo_raw || ''),
+      datasets: [{
+        label:            meta.serie_nombre,
+        data:             datos.map(d => d.valor),
+        borderColor:      col.line,
+        backgroundColor:  col.fill,
+        pointBackgroundColor: hasNeg ? pointColors : col.line,
+        borderWidth:      2,
+        pointRadius:      datos.length > 120 ? 0 : 3,
+        pointHoverRadius: 5,
+        tension:          0.25,
+        fill:             true,
+      }]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: c => `${fmt(c.parsed.y)}`
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { maxTicksLimit: 18, maxRotation: 45, font: { size: 11 } } },
+        y: {
+          ticks: { font: { size: 11 }, callback: v => fmt(v) },
+          ...(hasNeg && {
+            grid: {
+              color: ctx2 =>
+                ctx2.tick.value === 0
+                  ? 'rgba(185,28,28,.35)'
+                  : 'rgba(0,0,0,.06)',
+            }
+          })
+        }
+      }
+    }
+  });
+}
+
+// ── CSV ───────────────────────────────────────────────────────────────────────
+bCsv.addEventListener('click', () => {
+  if (!S.serie) return;
+  window.location.href =
+    `/api/export/csv?fuente=${encodeURIComponent(S.fuente)}` +
+    `&frecuencia=${encodeURIComponent(S.frecuencia)}` +
+    `&serie=${encodeURIComponent(S.serie)}` +
+    `&desde=${d1.value}&hasta=${d2.value}`;
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
